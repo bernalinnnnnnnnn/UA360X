@@ -2,239 +2,320 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>University of Abra, Main Campus, Lagangilang</title>
-  <style>
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: linear-gradient(135deg, #0066cc, #00bfff);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>University of Abra — Interactive Map</title>
+    <style>
+        :root {
+            --bg: #07080a;
+            --accent: #0ea5ff;
+            --pin-size: 3.2vw;
+        }
 
-    header {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 15px 20px;
-      background: linear-gradient(90deg, #0066cc, #00bfff);
-      color: white;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-    }
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            background: var(--bg);
+            font-family: "Segoe UI", Arial, sans-serif;
+            color: #fff;
+        }
 
-    header h1 {
-      font-size: 1.6rem;
-      margin: 0;
-      letter-spacing: 0.5px;
-    }
+        header {
+            text-align: center;
+            padding: 14px 12px;
+            background: linear-gradient(90deg, rgba(0, 38, 77, 0.95), rgba(0, 20, 40, 0.96));
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+            z-index: 50;
+        }
 
-    .content {
-      flex-grow: 1;
-      padding: 25px;
-    }
+        header h1 {
+            margin: 0;
+            font-size: clamp(16px, 3vw, 22px);
+            letter-spacing: 0.6px;
+        }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 20px;
-    }
+        .wrap {
+            max-width: 1367px;
+            margin: 18px auto;
+            padding: 0 12px;
+            position: relative;
+        }
 
-    .card {
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(10px);
-      border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
-      cursor: pointer;
-      text-align: center;
-    }
+        /* ✅ Responsive map container */
+        .map-container {
+            position: relative;
+            width: 100%;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #111;
+            aspect-ratio: 16 / 9;
+        }
 
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-    }
+        .map-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            user-select: none;
+        }
 
-    .card img {
-      width: 100%;
-      height: 140px;
-      object-fit: cover;
-    }
+        /* ✅ Pin style – only red pin, no white hover */
+        .pin {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            background: url("assets/pin2.png") center bottom / contain no-repeat;
+            transform: translate(-50%, -100%);
+            cursor: pointer;
+            transition: transform .2s ease;
+            border: none;
+            outline: none;
+        }
 
-    .card h2 {
-      padding: 12px;
-      font-size: 1rem;
-      color: #003366;
-      margin: 0;
-      line-height: 1.3;
-    }
-  </style>
+        .pin:hover,
+        .pin:focus,
+        .pin:active {
+            transform: translate(-50%, -110%) scale(1.15);
+            border: none;
+            outline: none;
+            box-shadow: none;
+        }
+
+        /* ✅ Tooltip (black only) */
+        .tooltip {
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: clamp(11px, 1.6vw, 13px);
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .18s ease, transform .18s ease;
+            transform-origin: 50% 100%;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+        }
+
+        .pin:hover .tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-4px);
+        }
+
+        /* ✅ Iframe overlay for tours */
+        .viewer {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: stretch;
+            justify-content: stretch;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 120;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .36s ease;
+        }
+
+        .viewer.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .viewer iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            background: #000;
+        }
+
+        /* ✅ Back button neon style */
+        .back-btn {
+            position: fixed;
+            left: 18px;
+            bottom: 18px;
+            z-index: 140;
+            background: linear-gradient(180deg, rgba(14, 165, 255, 0.18), rgba(14, 165, 255, 0.06));
+            border: 1px solid rgba(14, 165, 255, 0.6);
+            color: var(--accent);
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 30px rgba(14, 165, 255, 0.06), 0 0 18px rgba(14, 165, 255, 0.06);
+            backdrop-filter: blur(6px);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            transform: translateY(14px) scale(.98);
+            transition: transform .22s ease, opacity .22s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .back-btn.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0) scale(1);
+        }
+
+        .back-btn svg {
+            filter: drop-shadow(0 6px 12px rgba(14, 165, 255, 0.12));
+        }
+
+        /* ✅ Mobile responsive adjustments */
+        @media (max-width: 720px) {
+            :root {
+                --pin-size: 7vw;
+            }
+
+            .tooltip {
+                font-size: 12px;
+                padding: 6px 8px;
+            }
+
+            .back-btn {
+                left: 12px;
+                bottom: 12px;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+
+
 </head>
 
 <body>
-  <header>
-    <h1>University of Abra</h1>
-  </header>
+    <header>
+        <h1>University of Abra</h1>
+    </header>
+    <div class="map-container" id="mapContainer">
+        <img src="assets/ua2.jpg" alt="University of Abra Map" id="campusMap">
 
-  <div class="content">
-    <div class="grid">
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hspjt/collection/7DxGN?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/educ.jpg" alt="College of Teacher Education">
-        <h2>College of Teacher Education</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hwCgs/collection/7D308?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/cmcs.jpg" alt="Information and Communication Technology Center">
-        <h2>Information and Communication Technology Center</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/h34Rl/collection/7DSkq?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/atdc.jpg" alt="Asist Training and Development Center">
-        <h2>Asist Training and Development Center</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hR7CM/collection/7DSYF?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/library.jpg" alt="Temporary Library">
-        <h2>Temporary Library</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hRpW8/collection/7H4MZ?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/canteen.jpg" alt="UA Canteen">
-        <h2>UA Canteen</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/h3rLj/collection/7H4Mc?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/guidance.jpg" alt="Guidance and Counseling Office">
-        <h2>Guidance and Counseling Office</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/h3BBT/collection/7H4MG?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/gym.jpg" alt="Gymnasium">
-        <h2>Gymnasium</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/h3BQ3/collection/7H4HH?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/agri.jpg" alt="Central Agricultural Laboratory">
-        <h2>Central Agricultural Laboratory</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/h3BdG/collection/7H4DT?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/labschool.jpg" alt="Asist Laboratory High School">
-        <h2>Asist Laboratory High School</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/h3Bjb/collection/7H4Dt?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/labcanteen.jpg" alt="Laboratory Canteen">
-        <h2>Laboratory Canteen</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hRVMg/collection/7H4qw?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/natsci.jpg" alt="Natural Sciences Central Laboratory">
-        <h2>Natural Sciences Central Laboratory</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/h3w95/collection/7Dtgc?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/sciences.jpg" alt="Sciences Building">
-        <h2>Sciences Building</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/h3TnW/collection/7DrsL?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/new-agri.jpg" alt="College of Agriculture">
-        <h2>College of Agriculture</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/h3773/collection/7DSqc?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/exe.jpg" alt="Executive House">
-        <h2>Executive House</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hRj4M/collection/7DSkB?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/guest.jpg" alt="Guest House">
-        <h2>Guest House</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/h20kM/collection/7DWfD?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/sc.jpg" alt="Student Center">
-        <h2>Student Center</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/h3jGm/collection/7D3R5?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/forestry.jpg" alt="Forestry Laboratory Center">
-        <h2>Forestry Laboratory Center</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hWFYM/collection/7HmCC?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/aftic.jpg" alt="Agriculture and Food Technology Innovation Incubation and Commercialization Center">
-        <h2>Agriculture and Food Technology Innovation Incubation and Commercialization Center</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hW9CZ/collection/7Hm8L?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/front/" alt="Asist Laboratory School Annex">
-        <h2>Asist Laboratory School Annex</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hWgBJ/collection/7Hm6F?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/research.jpg" alt="Research and Extension">
-        <h2>Research and Extension</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hWPXC/collection/7HmPt?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/heas.jpg" alt="Higher Education and Auxilliary Services Building">
-        <h2>Higher Education and Auxilliary Services Building</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hWP0c/collection/7Hmlp?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/front/" alt="Clinic">
-        <h2>Clinic</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hWLKP/collection/7HL6Z?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/ffp.jpg" alt="FFP Hall">
-        <h2>FFP Hall</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hWhvB/collection/7HLDj?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/admin.jpg" alt="Administration Building">
-        <h2>Administration Building</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hW73Y/collection/7HLvK?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/post.jpg" alt="Post Harvest Technology Building">
-        <h2>Post Harvest Technology Building</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hWnrp/collection/7HLvX?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/processing.jpg" alt="Village Level Processing Unit">
-        <h2>Village Level Processing Unit</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hRSQ8/collection/7Hhr1?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/ht.jpg" alt="Hospitality Management and Home Technology Laboratory Building">
-        <h2>Hospitality Management and Home Technology Laboratory Building</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/hRnJd/collection/7H5Mg?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/bamboo.jpg" alt="Bamboo Textile Fiber Innovation Hub">
-        <h2>Bamboo Textile Fiber Innovation Hub</h2>
-      </div>
-
-      <div class="card" onclick="goToTour('https://kuula.co/share/h3Ryv/collection/7Dtts?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0')">
-        <img src="assets/dance.jpg" alt="Dance Studio">
-        <h2>Dance Studio</h2>
-      </div>
-
+        <!-- Pins will be inserted by JS for maintainability -->
     </div>
-  </div>
+    </div>
 
-  <script>
-    function goToTour(link) {
-      window.location.href = `tour.html?url=${encodeURIComponent(link)}`;
-    }
-  </script>
+    <!-- iframe viewer -->
+    <div class="viewer" id="viewer" aria-hidden="true">
+        <iframe id="tourFrame" title="Campus Tour Viewer" src=""></iframe>
+    </div>
+
+    <button id="backBtn" class="back-btn" aria-label="Back to map">
+        <!-- neon-left icon -->
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg">
+            <path d="M15 6L9 12L15 18" stroke="#0ea5ff" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+        </svg>
+        Back to Map
+    </button>
+
+    <script>
+        /* Data: building name + kuula link + approximate top/left (percent).
+           These positions were estimated from the uploaded image and can be fine-tuned.
+        */
+        const pins = [
+            { name: "College of Teacher Education", link: "https://kuula.co/share/hspjt/collection/7DxGN?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "79%", left: "40.3%" },
+            { name: "Information and Communication Technology Center", link: "https://kuula.co/share/hwCgs/collection/7D308?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "78.5%", left: "39%" },
+            { name: "Asist Training and Development Center", link: "https://kuula.co/share/h34Rl/collection/7DSkq?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "72%", left: "41%" },
+            { name: "Temporary Library", link: "https://kuula.co/share/hR7CM/collection/7DSYF?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "60%", left: "31.5%" },
+            { name: "UA Canteen", link: "https://kuula.co/share/hRpW8/collection/7H4MZ?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "89%", left: "40%" },
+            { name: "Guidance and Counseling Office", link: "https://kuula.co/share/h3rLj/collection/7H4Mc?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "86.5%", left: "41.5%" },
+            { name: "Gymnasium", link: "https://kuula.co/share/h3BBT/collection/7H4MG?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "65%", left: "33.5%" },
+            { name: "Central Agricultural Laboratory", link: "https://kuula.co/share/h3BQ3/collection/7H4HH?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "68%", left: "40%" },
+            { name: "Asist Laboratory High School", link: "https://kuula.co/share/h3BdG/collection/7H4DT?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "32%", left: "24%" },
+            { name: "Natural Sciences Central Laboratory", link: "https://kuula.co/share/hRVMg/collection/7H4qw?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "74.5%", left: "40%" },
+            { name: "Sciences Building", link: "https://kuula.co/share/h3w95/collection/7Dtgc?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "74%", left: "38%" },
+            { name: "College of Agriculture", link: "https://kuula.co/share/h3TnW/collection/7DrsL?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "70%", left: "42.5%" },
+            { name: "Executive House", link: "https://kuula.co/share/h3773/collection/7DSqc?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "56%", left: "31.5%" },
+            { name: "Guest House", link: "https://kuula.co/share/hRj4M/collection/7DSkB?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "70%", left: "40.5%" },
+            { name: "Student Center", link: "https://kuula.co/share/h20kM/collection/7DWfD?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "82%", left: "39.5%" },
+            { name: "Forestry Laboratory Center", link: "https://kuula.co/share/h3jGm/collection/7D3R5?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "76%", left: "43.5%" },
+            { name: "AFTIC Center", link: "https://kuula.co/share/hWFYM/collection/7HmCC?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "49%", left: "31%" },
+            { name: "Asist Laboratory School Annex", link: "https://kuula.co/share/hW9CZ/collection/7Hm8L?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "36%", left: "23.5%" },
+            { name: "Research and Extension", link: "https://kuula.co/share/hWgBJ/collection/7Hm6F?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "49%", left: "29%" },
+            { name: "HEAS Building", link: "https://kuula.co/share/hWPXC/collection/7HmPt?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "62%", left: "32%" },
+            { name: "Clinic", link: "https://kuula.co/share/hWP0c/collection/7Hmlp?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "63%", left: "32%" },
+            { name: "FFP Hall", link: "https://kuula.co/share/hWLKP/collection/7HL6Z?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "39%", left: "24%" },
+            { name: "Administration Building", link: "https://kuula.co/share/hWhvB/collection/7HLDj?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "36%", left: "25%" },
+            { name: "Post Harvest Technology Building", link: "https://kuula.co/share/hW73Y/collection/7HLvK?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "75%", left: "41.9%" },
+            { name: "Village Level Processing Unit", link: "https://kuula.co/share/hWnrp/collection/7HLvX?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "79%", left: "42.3%" },
+            { name: "Home Tech Department ", link: "https://kuula.co/share/hRSQ8/collection/7Hhr1?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "38%", left: "24%" },
+            { name: "Bamboo Textile Fiber Innovation Hub", link: "https://kuula.co/share/hRnJd/collection/7H5Mg?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "77.5%", left: "33%" },
+            { name: "Main Gate", link: "https://kuula.co/share/h3BdG/collection/7H4DT?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "37%", left: "21%" },
+            { name: "New Library Building", link: "https://kuula.co/share/h3BdG/collection/7H4DT?logo=-1&info=0&fs=0&vr=0&sd=1&thumbs=-1&margin=7&keys=0", top: "52%", left: "29.5%" }
+            /* add more pins here following same pattern if you need 40+ later */
+        ];
+
+        const container = document.getElementById('mapContainer');
+        const viewer = document.getElementById('viewer');
+        const frame = document.getElementById('tourFrame');
+        const backBtn = document.getElementById('backBtn');
+
+        // create pins dynamically
+        pins.forEach((p, i) => {
+            const el = document.createElement('div');
+            el.className = 'pin';
+            el.style.top = p.top;
+            el.style.left = p.left;
+            el.setAttribute('role', 'button');
+            el.setAttribute('aria-label', p.name);
+            el.title = p.name;
+
+            // tooltip
+            const tip = document.createElement('div');
+            tip.className = 'tooltip';
+            tip.innerText = p.name;
+            el.appendChild(tip);
+
+            // click behaviour: open iframe viewer with smooth transitions
+            el.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                openTour(p.link);
+            });
+
+            container.appendChild(el);
+        });
+
+        function openTour(url) {
+            // prepare url: ensure kuula embed-friendly URL (Kuula allows normal share URL inside iframe)
+            frame.src = url;
+            viewer.classList.add('open');
+            viewer.setAttribute('aria-hidden', 'false');
+            // show back button
+            setTimeout(() => backBtn.classList.add('show'), 220);
+            // optionally hide map content visually (focus remains in iframe)
+            document.querySelector('.map-container').style.filter = 'blur(1px) brightness(.9)';
+        }
+
+        function closeTour() {
+            backBtn.classList.remove('show');
+            viewer.classList.remove('open');
+            viewer.setAttribute('aria-hidden', 'true');
+            // remove iframe src after animation to stop audio etc.
+            setTimeout(() => { frame.src = ""; }, 420);
+            document.querySelector('.map-container').style.filter = 'none';
+        }
+
+        backBtn.addEventListener('click', closeTour);
+
+        // also allow clicking outside iframe (on overlay) to close
+        viewer.addEventListener('click', (e) => {
+            // if clicked background overlay (not the iframe)
+            if (e.target === viewer) closeTour();
+        });
+
+        // keyboard accessibility - ESC to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && viewer.classList.contains('open')) closeTour();
+        });
+
+        // OPTIONAL: make pins reflow on resize (they're % based so they already respond)
+    </script>
 </body>
+
 </html>
