@@ -9,7 +9,7 @@
         :root {
             --bg: #07080a;
             --accent: #0ea5ff;
-            --pin-size: 3.2vw;
+            --sidebar-bg: rgba(10, 15, 25, 0.96);
         }
 
         html,
@@ -19,14 +19,18 @@
             background: var(--bg);
             font-family: "Segoe UI", Arial, sans-serif;
             color: #fff;
+            overflow: hidden;
         }
 
         header {
-            text-align: center;
-            padding: 14px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
             background: linear-gradient(90deg, rgba(0, 38, 77, 0.95), rgba(0, 20, 40, 0.96));
             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
             z-index: 50;
+            position: relative;
         }
 
         header h1 {
@@ -35,32 +39,42 @@
             letter-spacing: 0.6px;
         }
 
-        .wrap {
-            max-width: 1367px;
-            margin: 18px auto;
-            padding: 0 12px;
-            position: relative;
+        #menuBtn {
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 1.6rem;
+            cursor: pointer;
+            transition: transform .2s ease;
         }
 
-        /* ✅ Responsive map container */
+        #menuBtn:hover {
+            transform: scale(1.2);
+        }
+
         .map-container {
-            position: relative;
-            width: 100%;
-            border-radius: 6px;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            width: 100vw;
+            height: calc(100vh - 60px);
             overflow: hidden;
-            background: #111;
-            aspect-ratio: 16 / 9;
+            background: #000;
         }
 
         .map-container img {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            object-fit: contain;
-            display: block;
+            object-fit: cover;
+            object-position: center;
             user-select: none;
+            filter: brightness(0.9);
+            transition: opacity 0.8s ease;
         }
 
-        /* ✅ Pin style – only red pin, no white hover */
         .pin {
             position: absolute;
             width: 35px;
@@ -69,20 +83,12 @@
             transform: translate(-50%, -100%);
             cursor: pointer;
             transition: transform .2s ease;
-            border: none;
-            outline: none;
         }
 
-        .pin:hover,
-        .pin:focus,
-        .pin:active {
+        .pin:hover {
             transform: translate(-50%, -110%) scale(1.15);
-            border: none;
-            outline: none;
-            box-shadow: none;
         }
 
-        /* ✅ Tooltip (black only) */
         .tooltip {
             position: absolute;
             bottom: calc(100% + 10px);
@@ -92,13 +98,11 @@
             color: #fff;
             padding: 6px 10px;
             border-radius: 6px;
-            font-size: clamp(11px, 1.6vw, 13px);
+            font-size: 12px;
             white-space: nowrap;
             pointer-events: none;
             opacity: 0;
             transition: opacity .18s ease, transform .18s ease;
-            transform-origin: 50% 100%;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
         }
 
         .pin:hover .tooltip {
@@ -106,7 +110,6 @@
             transform: translateX(-50%) translateY(-4px);
         }
 
-        /* ✅ Iframe overlay for tours */
         .viewer {
             position: fixed;
             inset: 0;
@@ -132,7 +135,6 @@
             background: #000;
         }
 
-        /* ✅ Back button neon style */
         .back-btn {
             position: fixed;
             left: 18px;
@@ -162,57 +164,89 @@
             transform: translateY(0) scale(1);
         }
 
-        .back-btn svg {
-            filter: drop-shadow(0 6px 12px rgba(14, 165, 255, 0.12));
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 420px;
+            height: 100%;
+            background: var(--sidebar-bg);
+            backdrop-filter: blur(10px);
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.6);
+            transform: translateX(-100%);
+            transition: transform 0.4s ease;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* ✅ Mobile responsive adjustments */
-        @media (max-width: 720px) {
-            :root {
-                --pin-size: 7vw;
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar iframe {
+            flex-grow: 1;
+            width: 100%;
+            border: none;
+            background: transparent;
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(3px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .3s ease;
+            z-index: 150;
+        }
+
+        .overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        @media(max-width: 900px) {
+            .sidebar {
+                width: 90%;
             }
 
-            .tooltip {
-                font-size: 12px;
-                padding: 6px 8px;
-            }
-
-            .back-btn {
-                left: 12px;
-                bottom: 12px;
-                padding: 8px 12px;
+            .pin {
+                width: 6vw;
+                height: 6vw;
             }
         }
     </style>
-
-
 </head>
 
 <body>
     <header>
+        <button id="menuBtn">☰</button>
         <h1>University of Abra</h1>
     </header>
+
     <div class="map-container" id="mapContainer">
         <img src="assets/ua2.jpg" alt="University of Abra Map" id="campusMap">
-
-        <!-- Pins will be inserted by JS for maintainability -->
-    </div>
     </div>
 
-    <!-- iframe viewer -->
     <div class="viewer" id="viewer" aria-hidden="true">
         <iframe id="tourFrame" title="Campus Tour Viewer" src=""></iframe>
     </div>
 
     <button id="backBtn" class="back-btn" aria-label="Back to map">
-        <!-- neon-left icon -->
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path d="M15 6L9 12L15 18" stroke="#0ea5ff" stroke-width="2" stroke-linecap="round"
                 stroke-linejoin="round" />
         </svg>
         Back to Map
     </button>
+
+    <div class="sidebar" id="sidebar">
+        <iframe id="indexFrame" src="index.html"></iframe>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
 
     <script>
         /* Data: building name + kuula link + approximate top/left (percent).
@@ -255,66 +289,58 @@
         const viewer = document.getElementById('viewer');
         const frame = document.getElementById('tourFrame');
         const backBtn = document.getElementById('backBtn');
+        const sidebar = document.getElementById('sidebar');
+        const menuBtn = document.getElementById('menuBtn');
+        const overlay = document.getElementById('overlay');
 
-        // create pins dynamically
-        pins.forEach((p, i) => {
+        pins.forEach(p => {
             const el = document.createElement('div');
             el.className = 'pin';
             el.style.top = p.top;
             el.style.left = p.left;
-            el.setAttribute('role', 'button');
-            el.setAttribute('aria-label', p.name);
             el.title = p.name;
 
-            // tooltip
             const tip = document.createElement('div');
             tip.className = 'tooltip';
             tip.innerText = p.name;
             el.appendChild(tip);
 
-            // click behaviour: open iframe viewer with smooth transitions
-            el.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                openTour(p.link);
-            });
-
+            el.addEventListener('click', ev => { ev.stopPropagation(); openTour(p.link); });
             container.appendChild(el);
         });
 
         function openTour(url) {
-            // prepare url: ensure kuula embed-friendly URL (Kuula allows normal share URL inside iframe)
             frame.src = url;
             viewer.classList.add('open');
             viewer.setAttribute('aria-hidden', 'false');
-            // show back button
             setTimeout(() => backBtn.classList.add('show'), 220);
-            // optionally hide map content visually (focus remains in iframe)
             document.querySelector('.map-container').style.filter = 'blur(1px) brightness(.9)';
+            closeSidebar();
         }
 
         function closeTour() {
             backBtn.classList.remove('show');
             viewer.classList.remove('open');
             viewer.setAttribute('aria-hidden', 'true');
-            // remove iframe src after animation to stop audio etc.
             setTimeout(() => { frame.src = ""; }, 420);
             document.querySelector('.map-container').style.filter = 'none';
         }
 
         backBtn.addEventListener('click', closeTour);
+        viewer.addEventListener('click', e => { if (e.target === viewer) closeTour(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeTour(); closeSidebar(); } });
 
-        // also allow clicking outside iframe (on overlay) to close
-        viewer.addEventListener('click', (e) => {
-            // if clicked background overlay (not the iframe)
-            if (e.target === viewer) closeTour();
-        });
+        function openSidebar() {
+            sidebar.classList.add('open');
+            overlay.classList.add('show');
+        }
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('show');
+        }
 
-        // keyboard accessibility - ESC to close
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && viewer.classList.contains('open')) closeTour();
-        });
-
-        // OPTIONAL: make pins reflow on resize (they're % based so they already respond)
+        menuBtn.addEventListener('click', openSidebar);
+        overlay.addEventListener('click', closeSidebar);
     </script>
 </body>
 
